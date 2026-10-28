@@ -104,8 +104,8 @@ int main(void)
 {
     printf("Enter an expression: ");
 
-    if (fgets(ip, sizeof(ip), stdin) == NULL)
-        return 1;
+    // if (fgets(ip, sizeof(ip), stdin) == NULL)
+    //     return 1;
 
     /* Remove trailing newline */
     ip[strcspn(ip, "\r\n")] = '\0';
