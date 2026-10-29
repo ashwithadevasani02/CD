@@ -1,7 +1,5 @@
-
 #include <stdio.h>
 #include <string.h>
-
 int state[100];
 char symbol[100];
 int top = -1;
@@ -116,12 +114,12 @@ int main(void)
         act = action[st][c];
 
         printStack();
-        printf("\t\t");
+        printf("\t\t\t\t");
 
         for (j = i; j <= n; j++)
             printf("%s", input[j]);
 
-        printf("\t\t");
+        printf("\t\t\t\t");
 
         if (act == 999)
         {

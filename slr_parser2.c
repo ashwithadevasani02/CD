@@ -2,7 +2,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#define MAX 100
+/* Stack */
+int state[100];
+char symbol[100];
+int top = -1;
 
 /*
 Grammar:
@@ -13,7 +16,7 @@ Grammar:
 5. B -> epsilon
 */
 
-/* ACTION columns: a, b, $ */
+/* ACTION table: columns a, b, $ */
 int action[6][3] = {
     {  3, -3, -3 },
     {  0,  0, 999 },
@@ -23,21 +26,21 @@ int action[6][3] = {
     {  0,  0, -4 }
 };
 
-/* GOTO columns: S, A, B */
-int gototable[6][3] = {
-    { 1, 2, 0 },
-    { 0, 0, 0 },
-    { 0, 0, 4 },
-    { 0, 0, 0 },
-    { 0, 0, 0 },
-    { 0, 0, 0 }
+/* GOTO table: columns S, A, B */
+int goTo[6][3] = {
+    { 1, 2, -1 },
+    {-1, -1, -1 },
+    {-1, -1,  4 },
+    {-1, -1, -1 },
+    {-1, -1, -1 },
+    {-1, -1, -1 }
 };
 
-int getcol(char ch)
+int getcol(char *input)
 {
-    if (ch == 'a') return 0;
-    if (ch == 'b') return 1;
-    if (ch == '$') return 2;
+    if (strcmp(input, "a") == 0) return 0;
+    if (strcmp(input, "b") == 0) return 1;
+    if (strcmp(input, "$") == 0) return 2;
 
     return -1;
 }
@@ -51,104 +54,70 @@ int gotocol(char ch)
     return -1;
 }
 
-void printstack(int stack[], int top)
+void push(char ch, int st)
+{
+    top++;
+    symbol[top] = ch;
+    state[top] = st;
+}
+
+void pop(int n)
+{
+    top -= n;
+}
+
+void printStack(void)
 {
     int i;
 
     for (i = 0; i <= top; i++)
-        printf("%d ", stack[i]);
-}
-
-void printprod(int p)
-{
-    switch (p)
-    {
-        case 1:
-            printf("Reduce S -> AB");
-            break;
-
-        case 2:
-            printf("Reduce A -> a");
-            break;
-
-        case 3:
-            printf("Reduce A -> epsilon");
-            break;
-
-        case 4:
-            printf("Reduce B -> b");
-            break;
-
-        case 5:
-            printf("Reduce B -> epsilon");
-            break;
-    }
+        printf("%c%d ", symbol[i], state[i]);
 }
 
 int main(void)
 {
-    char input[MAX];
-    int stack[MAX];
-    int top = 0;
-    int ip = 0;
-    int len, k;
+    char input[100][10];
+    int n, i, j;
 
-    printf("Enter input string over a and b: ");
+    printf("Enter number of tokens: ");
+    scanf("%d", &n);
 
-    if (fgets(input, sizeof(input), stdin) == NULL)
-        return 1;
+    printf("Enter tokens (a, b):\n");
 
-    /* Remove the newline */
-    input[strcspn(input, "\r\n")] = '\0';
+    for (i = 0; i < n; i++)
+        scanf("%9s", input[i]);
 
-    /* Allow an optional $ at the end */
-    len = strlen(input);
-
-    if (len > 0 && input[len - 1] == '$')
-        input[--len] = '\0';
-
-    /* Validate input */
-    for (k = 0; k < len; k++)
-    {
-        if (input[k] != 'a' && input[k] != 'b')
-        {
-            printf("Invalid input\n");
-            return 0;
-        }
-    }
-
-    if (len >= MAX - 1)
-    {
-        printf("Input too long\n");
-        return 1;
-    }
-
-    input[len] = '$';
-    input[len + 1] = '\0';
+    strcpy(input[n], "$");
 
     /* Initialize stack */
-    stack[0] = 0;
+    push('$', 0);
+    i = 0;
 
-    printf("\n%-15s %-15s %s\n",
+    printf("\n%-25s %-20s %s\n",
            "Stack", "Input", "Action");
 
     while (1)
     {
-        int state = stack[top];
-        int col = getcol(input[ip]);
+        int st = state[top];
+        int c = getcol(input[i]);
         int act;
 
-        if (col == -1)
+        if (c == -1)
         {
-            printf("Invalid input\n");
+            printf("Invalid input token\n");
             break;
         }
 
-        act = action[state][col];
+        act = action[st][c];
 
-        printstack(stack, top);
-        printf("%*s", 15 - (top + 1) * 2, "");
-        printf("%-15s ", input + ip);
+        /* Print stack */
+        printStack();
+        printf("\t\t");
+
+        for (j = i; j <= n; j++)
+            printf("%s", input[j]);
+
+        printf("\t\t");
 
         if (act == 999)
         {
@@ -156,88 +125,76 @@ int main(void)
             break;
         }
 
-        if (act == 0)
-        {
-            printf("String Rejected\n");
-            break;
-        }
-
-        /* Shift */
-        if (act > 0)
+        else if (act > 0)
         {
             printf("Shift %d\n", act);
 
-            if (top >= MAX - 1)
-            {
-                printf("Stack overflow\n");
-                break;
-            }
+            push(input[i][0], act);
 
-            stack[++top] = act;
-            ip++;
+            i++;
         }
-        /* Reduce */
-        else
+
+        else if (act < 0)
         {
             int prod = -act;
             char lhs;
-            int rhslen, gc, prev, next;
+            int len, gc, next;
 
             switch (prod)
             {
                 case 1:
                     lhs = 'S';
-                    rhslen = 2;
+                    len = 2;
+                    printf("Reduce S -> AB\n");
                     break;
 
                 case 2:
                     lhs = 'A';
-                    rhslen = 1;
+                    len = 1;
+                    printf("Reduce A -> a\n");
                     break;
 
                 case 3:
                     lhs = 'A';
-                    rhslen = 0;
+                    len = 0;
+                    printf("Reduce A -> epsilon\n");
                     break;
 
                 case 4:
                     lhs = 'B';
-                    rhslen = 1;
+                    len = 1;
+                    printf("Reduce B -> b\n");
                     break;
 
                 case 5:
                     lhs = 'B';
-                    rhslen = 0;
+                    len = 0;
+                    printf("Reduce B -> epsilon\n");
                     break;
 
                 default:
                     printf("Invalid reduction\n");
-                    return 1;
+                    return 0;
             }
 
-            printprod(prod);
-            printf("\n");
-
-            /* Pop the RHS length */
-            top -= rhslen;
+            pop(len);
 
             gc = gotocol(lhs);
-            prev = stack[top];
-            next = gototable[prev][gc];
+            next = goTo[state[top]][gc];
 
-            if (next < 0 || next >= 6)
+            if (next == -1)
             {
                 printf("GOTO error\n");
                 break;
             }
 
-            if (top >= MAX - 1)
-            {
-                printf("Stack overflow\n");
-                break;
-            }
+            push(lhs, next);
+        }
 
-            stack[++top] = next;
+        else
+        {
+            printf("String Rejected\n");
+            break;
         }
     }
 
